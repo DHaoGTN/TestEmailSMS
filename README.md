@@ -4,7 +4,7 @@
 
 - Because this is demo, we just get refresh token directly to use GCP service, no need OAuth screen setup:
 - Create OAuth client ID:
-  + GCP > API&Services > Credentials > Create OAuth client ID > Authorized redirect URIs:
+  + GCP > API&Services > Credentials > Create OAuth client ID > Create... > Authorized redirect URIs:
   add https://developers.google.com/oauthplayground
   + On Consent screen > Data access: add scope permission:
   https://www.googleapis.com/auth/gmail.modify,
