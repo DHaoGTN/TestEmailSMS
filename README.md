@@ -3,7 +3,8 @@
 #### 1. Setup Auth
 
 - Because this is demo, we just get refresh token directly to use GCP service, no need OAuth screen setup:
-- Create OAuth client ID:
+
+1.1. Create OAuth client ID:
   + GCP > API&Services > Credentials > Create OAuth client ID > Create... > Authorized redirect URIs:
   add https://developers.google.com/oauthplayground
   + On Consent screen > Data access: add scope permission:
@@ -11,7 +12,8 @@
   https://www.googleapis.com/auth/gmail.send,
   https://www.googleapis.com/auth/gmail.readonly,
   https://mail.google.com/
-- Get token directly:
+
+1.2. Get token directly:
   + Go: https://developers.google.com/oauthplayground
   + Open Settings ⚙️ (top right corner)
 Check the following:
@@ -30,10 +32,14 @@ Click Exchange authorization code for tokens
 You'll now get token
 
 #### 2. Setup for get realtime watch email receive
-- GCP > Enable Gmail API
-- GCP > Pub/sub:
+
+2.1. GCP > Enable Gmail API
+
+2.2. GCP > Pub/sub:
   + Go to Pub/Sub Topic and create Topic (check Add default subscription)
   + After created, go to that topic > Tab permission > Add pricinple:
     + Principal: gmail-api-push@system.gserviceaccount.com
     + Role: Pub/Sub Publisher
   + Make sure created subscription is type Pull
+
+2.3. Create Service account (for listener) with role: Pub/Sub Subscriber, then download JSON key and put to project.
