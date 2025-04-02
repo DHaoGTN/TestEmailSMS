@@ -37,7 +37,7 @@ class GmailReceiver {
 
     try {
       const res = await this.gmail.users.watch({
-        userId: "suyama@gtn.co.jp",
+        userId: "me",
         auth: this.auth,
         requestBody: {
           labelIds: ["INBOX"],
