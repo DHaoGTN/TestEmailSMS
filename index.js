@@ -6,6 +6,7 @@ const { google } = require("googleapis");
 
 const GmailSender = require("./gmailSender");
 const GmailReceiver = require("./gmailReceiver");
+const TwilioService = require("./twilioService");
 
 dotenv.config();
 const app = express();
@@ -20,6 +21,8 @@ const serviceAccountPath = path.join(
   "test-email-hao-gmail-pubsub.json"
 );
 const receiver = new GmailReceiver(serviceAccountPath);
+
+const twilioService = new TwilioService();
 
 // Setup OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
@@ -76,6 +79,42 @@ app.get("/latest", async (req, res) => {
     res.status(500).send(`Failed to start watch: ${err.message}`);
   }
 });
+
+
+// Twilio: Send SMS API
+app.post("/send-sms", async (req, res) => {
+  try {
+    const { to, message } = req.body;
+
+    if (!to || !message) {
+      return res.status(400).json({ error: 'Phone number and message are required' });
+    }
+
+    const result = await twilioService.sendSMS(to, message);
+    res.status(result.success ? 200 : 500).json(result);
+  } catch (err) {
+    console.error("❌ Failed to send SMS:", err);
+    res.status(500).send(`Failed to send SMS: ${err.message}`);
+  }
+});
+
+// Twilio: Send bulk SMS API
+app.post("/send-bulk-sms", async (req, res) => {
+  try {
+    const { recipients, message } = req.body;
+
+    if (!recipients || !Array.isArray(recipients) || recipients.length === 0 || !message) {
+      return res.status(400).json({ error: 'Valid recipients array and message are required' });
+    }
+
+    const results = await twilioService.sendBulkSMS(recipients, message);
+    res.status(200).json({ results });
+  } catch (err) {
+    console.error("❌ Failed to send bulk SMS:", err);
+    res.status(500).send(`Failed to send bulk SMS: ${err.message}`);
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
