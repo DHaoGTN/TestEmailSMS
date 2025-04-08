@@ -25,9 +25,8 @@ Paste and select this Gmail scope:
 https://www.googleapis.com/auth/gmail.modify,https://www.googleapis.com/auth/gmail.send,https://www.googleapis.com/auth/gmail.readonly,https://mail.google.com/
 Then click Authorize APIs.
 After clicking Authorize, you’ll be redirected and an authorization code will appear.
-  + On Step 2: Exchange Authorization Code for Tokens
-Click Exchange authorization code for tokens
-You'll now get token
+  + On Step 2: Exchange Authorization Code for Tokens.
+  Click Exchange authorization code for tokens. You'll now get token
 
 #### 2. Setup for get realtime watch email receive
 - GCP > Enable Gmail API
