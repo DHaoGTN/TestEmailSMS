@@ -1,3 +1,4 @@
+// gmailReceiver.js
 const { google } = require("googleapis");
 const { PubSub } = require("@google-cloud/pubsub");
 require("dotenv").config();
@@ -62,83 +63,6 @@ class GmailReceiver {
       throw error;
     }
   }
-
-  // listenToPubSub(subscriptionName, onEmailCallback) {
-  //   const subscription = this.pubsub.subscription(subscriptionName);
-
-  //   subscription.on("message", async (message) => {
-  //     // console.log("📨 Received Pub/Sub message");
-  //     // console.log("Message attributes:", message.attributes);
-  //     message.ack();
-
-  //     try {
-  //       const messageData = Buffer.from(message.data, "base64").toString(
-  //         "utf-8"
-  //       );
-  //       console.log("🔍 Raw message data:", messageData);
-
-  //       const notification = JSON.parse(messageData);
-  //       console.log(
-  //         "🔍 Parsed notification:",
-  //         JSON.stringify(notification, null, 2)
-  //       );
-
-  //       const historyId = notification.historyId;
-  //       const emailAddress = notification.emailAddress;
-
-  //       console.log("📨 Gmail push notification");
-  //       console.log("  ➤ Email Address:", emailAddress);
-  //       console.log("  ➤ History ID:", historyId);
-
-  //       // Fetch ALL messages, not just since last history ID
-  //       const listResponse = await this.gmail.users.messages.list({
-  //         userId: "me",
-  //         maxResults: 1, // Adjust as needed
-  //         labelIds: ["INBOX"], // Only inbox messages
-  //       });
-
-  //       const messages = listResponse.data.messages || [];
-  //       console.log("🧪 Total messages found:", messages.length);
-
-  //       // Process recent messages
-  //       for (const msg of messages) {
-  //         try {
-  //           const msgData = await this.gmail.users.messages.get({
-  //             userId: "me",
-  //             id: msg.id,
-  //             format: "full",
-  //           });
-
-  //           // Process and callback with email details
-  //           this.processEmailMessage(msgData, onEmailCallback);
-  //         } catch (msgError) {
-  //           console.error(
-  //             "❌ Error fetching individual message:",
-  //             msgError.message
-  //           );
-  //         }
-  //       }
-
-  //       // If no messages found, log additional context
-  //       if (messages.length === 0) {
-  //         console.warn("⚠️ No messages found. Possible reasons:");
-  //         console.warn("  1. No new unread messages");
-  //         console.warn("  2. Messages might be filtered out");
-  //         console.warn("  3. Incorrect label or filter settings");
-  //       }
-  //     } catch (error) {
-  //       console.error("❌ Error processing Pub/Sub message:", error);
-  //     }
-  //   });
-
-  //   subscription.on("error", (err) => {
-  //     console.error("❌ Pub/Sub listener error:", err.message);
-  //   });
-
-  //   console.log(
-  //     `🎧 Pub/Sub subscription '${subscriptionName}' is listening for Gmail push events.`
-  //   );
-  // }
 
   listenToPubSub(subscriptionName, onEmailCallback) {
     const subscription = this.pubsub.subscription(subscriptionName);
