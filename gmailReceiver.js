@@ -24,7 +24,7 @@ class GmailReceiver {
     setInterval(() => {
       // Clear processed IDs every 24 hours
       this.processedMessageIds.clear();
-      console.log('🧹 Processed message IDs cache cleared');
+      console.log("🧹 Processed message IDs cache cleared");
     }, 24 * 60 * 60 * 1000);
   }
 
@@ -67,27 +67,29 @@ class GmailReceiver {
   listenToPubSub(subscriptionName, onEmailCallback) {
     const subscription = this.pubsub.subscription(subscriptionName);
 
-    subscription.on('message', async (message) => {
+    subscription.on("message", async (message) => {
       // console.log('📨 Received Pub/Sub message');
       message.ack();
 
       try {
-        const messageData = Buffer.from(message.data, 'base64').toString('utf-8');
+        const messageData = Buffer.from(message.data, "base64").toString(
+          "utf-8"
+        );
         const notification = JSON.parse(messageData);
 
-        console.log('📨 Gmail push notification');
-        console.log('  ➤ Email Address:', notification.emailAddress);
-        console.log('  ➤ History ID:', notification.historyId);
+        console.log("📨 Gmail push notification");
+        console.log("  ➤ Email Address:", notification.emailAddress);
+        console.log("  ➤ History ID:", notification.historyId);
 
         // Fetch recent messages
         const listResponse = await this.gmail.users.messages.list({
-          userId: 'me',
+          userId: "me",
           maxResults: 1,
-          labelIds: ['INBOX'],
+          labelIds: ["INBOX"],
         });
 
         const messages = listResponse.data.messages || [];
-        console.log('🧪 Total messages found:', messages.length);
+        console.log("🧪 Total messages found:", messages.length);
 
         // Process recent messages
         for (const msg of messages) {
@@ -99,9 +101,9 @@ class GmailReceiver {
 
           try {
             const msgData = await this.gmail.users.messages.get({
-              userId: 'me',
+              userId: "me",
               id: msg.id,
-              format: 'full',
+              format: "full",
             });
 
             // Add message ID to processed set
@@ -110,22 +112,30 @@ class GmailReceiver {
             // Process and callback with email details
             this.processEmailMessage(msg.id, msgData, onEmailCallback);
           } catch (msgError) {
-            console.error('❌ Error fetching individual message:', msgError.message);
+            console.error(
+              "❌ Error fetching individual message:",
+              msgError.message
+            );
           }
         }
 
         // Log processed message IDs for debugging
-        console.log('🔍 Processed Message IDs:', Array.from(this.processedMessageIds));
+        console.log(
+          "🔍 Processed Message IDs:",
+          Array.from(this.processedMessageIds)
+        );
       } catch (error) {
-        console.error('❌ Error processing Pub/Sub message:', error);
+        console.error("❌ Error processing Pub/Sub message:", error);
       }
     });
 
-    subscription.on('error', (err) => {
-      console.error('❌ Pub/Sub listener error:', err.message);
+    subscription.on("error", (err) => {
+      console.error("❌ Pub/Sub listener error:", err.message);
     });
 
-    console.log(`🎧 Pub/Sub subscription '${subscriptionName}' is listening for Gmail push events.`);
+    console.log(
+      `🎧 Pub/Sub subscription '${subscriptionName}' is listening for Gmail push events.`
+    );
   }
 
   processEmailMessage(msgId, msgData, onEmailCallback) {
