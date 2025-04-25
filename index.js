@@ -52,13 +52,30 @@ app.get("/watch", async (req, res) => {
     await receiver.watchInbox();
     receiver.listenToPubSub(
       process.env.SUBSCRIPTION_NAME,
-      (emailSummary, fullMessage) => {
+      async (emailData, rawData) => {
         console.log("📩 New email received!");
-        console.log("  ➤ From:", emailSummary.from);
-        console.log("  ➤ Subject:", emailSummary.subject);
-        console.log("  ➤ Body:", emailSummary.body);
-        console.log("  ➤ Date:", emailSummary.date);
-        console.log("  ➤ Message ID:", emailSummary.msgId);
+        console.log("  ➤ From:", emailData.from);
+        console.log("  ➤ Subject:", emailData.subject);
+        console.log("  ➤ Body:", emailData.body);
+        console.log("  ➤ Date:", emailData.date);
+        console.log("  ➤ Message ID:", emailData.msgId);
+        console.log("HTML Content:", emailData.htmlContent);
+        console.log("Plain Text Content:", emailData.plainTextContent);
+
+        // Handle attachments
+        if (emailData.attachments.length > 0) {
+          for (const attachment of emailData.attachments) {
+            // Get the attachment data
+            const attachmentData = await receiver.getAttachments(
+              emailData.msgId,
+              attachment.id
+            );
+
+            // Save it to a local file
+            const localPath = `./${attachment.filename}`;
+            await receiver.saveAttachment(attachmentData, localPath);
+          }
+        }
       }
     );
 
@@ -80,14 +97,15 @@ app.get("/latest", async (req, res) => {
   }
 });
 
-
 // Twilio: Send SMS API
 app.post("/send-sms", async (req, res) => {
   try {
     const { to, message } = req.body;
 
     if (!to || !message) {
-      return res.status(400).json({ error: 'Phone number and message are required' });
+      return res
+        .status(400)
+        .json({ error: "Phone number and message are required" });
     }
 
     const result = await twilioService.sendSMS(to, message);
@@ -103,8 +121,15 @@ app.post("/send-bulk-sms", async (req, res) => {
   try {
     const { recipients, message } = req.body;
 
-    if (!recipients || !Array.isArray(recipients) || recipients.length === 0 || !message) {
-      return res.status(400).json({ error: 'Valid recipients array and message are required' });
+    if (
+      !recipients ||
+      !Array.isArray(recipients) ||
+      recipients.length === 0 ||
+      !message
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Valid recipients array and message are required" });
     }
 
     const results = await twilioService.sendBulkSMS(recipients, message);
@@ -114,7 +139,6 @@ app.post("/send-bulk-sms", async (req, res) => {
     res.status(500).send(`Failed to send bulk SMS: ${err.message}`);
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);

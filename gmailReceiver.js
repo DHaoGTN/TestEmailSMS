@@ -138,7 +138,32 @@ class GmailReceiver {
     );
   }
 
-  processEmailMessage(msgId, msgData, onEmailCallback) {
+  async getAttachments(messageId, attachmentId) {
+    try {
+      const response = await this.gmail.users.messages.attachments.get({
+        userId: "me",
+        messageId: messageId,
+        id: attachmentId,
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error("❌ Error getting attachment:", error);
+      throw error;
+    }
+  }
+
+  async saveAttachment(attachmentData, filePath) {
+    try {
+      const buffer = Buffer.from(attachmentData, "base64");
+      await require("fs").promises.writeFile(filePath, buffer);
+      console.log(`✅ Attachment saved to ${filePath}`);
+    } catch (error) {
+      console.error("❌ Error saving attachment:", error);
+      throw error;
+    }
+  }
+
+  async processEmailMessage(msgId, msgData, onEmailCallback) {
     const payload = msgData.data.payload;
 
     // Extract headers
@@ -151,32 +176,62 @@ class GmailReceiver {
     const from = headers["from"] || "(No From)";
     const date = headers["date"] || "(No Date)";
 
-    // Extract body
-    let bodyData = payload.body?.data;
-    if (!bodyData && payload.parts) {
-      const plainPart = payload.parts.find((p) => p.mimeType === "text/plain");
-      const htmlPart = payload.parts.find((p) => p.mimeType === "text/html");
-      bodyData = plainPart?.body?.data || htmlPart?.body?.data;
+    // Extract HTML and plain text content
+    let htmlContent = "";
+    let plainTextContent = "";
+    let attachments = [];
+
+    const processPart = (part) => {
+      if (part.mimeType === "text/html") {
+        htmlContent = Buffer.from(part.body.data, "base64").toString("utf-8");
+      } else if (part.mimeType === "text/plain") {
+        plainTextContent = Buffer.from(part.body.data, "base64").toString(
+          "utf-8"
+        );
+      } else if (part.body.attachmentId) {
+        attachments.push({
+          id: part.body.attachmentId,
+          filename: part.filename,
+          mimeType: part.mimeType,
+          size: part.body.size,
+        });
+      }
+
+      // Recursively process nested parts
+      if (part.parts) {
+        part.parts.forEach(processPart);
+      }
+    };
+
+    // Process the main payload
+    if (payload.body.data) {
+      if (payload.mimeType === "text/html") {
+        htmlContent = Buffer.from(payload.body.data, "base64").toString(
+          "utf-8"
+        );
+      } else if (payload.mimeType === "text/plain") {
+        plainTextContent = Buffer.from(payload.body.data, "base64").toString(
+          "utf-8"
+        );
+      }
     }
 
-    const decodedBody = bodyData
-      ? Buffer.from(bodyData, "base64").toString("utf-8")
-      : "(No body found)";
-
-    // console.log("📩 New email processed!");
-    // console.log("  ➤ From:", from);
-    // console.log("  ➤ Subject:", subject);
-    // console.log("  ➤ Date:", date);
+    // Process all parts
+    if (payload.parts) {
+      payload.parts.forEach(processPart);
+    }
 
     // Call callback with email summary and full message data
     onEmailCallback(
       {
         msgId,
         subject,
-        body: decodedBody,
+        htmlContent,
+        plainTextContent,
         from,
         date,
         snippet: msgData.data.snippet,
+        attachments,
       },
       msgData.data
     );
