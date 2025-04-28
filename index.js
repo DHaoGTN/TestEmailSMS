@@ -72,7 +72,7 @@ app.get("/watch", async (req, res) => {
             );
 
             // Save it to a local file
-            const localPath = `./${attachment.filename}`;
+            const localPath = `./data/${attachment.filename}`;
             await receiver.saveAttachment(attachmentData, localPath);
           }
         }
@@ -96,6 +96,49 @@ app.get("/latest", async (req, res) => {
     res.status(500).send(`Failed to start watch: ${err.message}`);
   }
 });
+
+app.get("/recover-emails", async (req, res) => {
+  try {
+    // Optional query parameter for maximum number of emails to recover
+    const maxResults = req.query.max ? parseInt(req.query.max) : 20;
+
+    const result = await receiver.recoverMissedEmails(
+      async (emailData, rawData) => {
+        console.log("📩 Recovered missed email!");
+        console.log("  ➤ From:", emailData.from);
+        console.log("  ➤ Subject:", emailData.subject);
+        console.log("  ➤ Date:", emailData.date);
+        console.log("  ➤ Message ID:", emailData.msgId);
+
+        // Handle attachments for recovered emails too
+        if (emailData.attachments && emailData.attachments.length > 0) {
+          for (const attachment of emailData.attachments) {
+            const attachmentData = await receiver.getAttachments(
+              emailData.msgId,
+              attachment.id
+            );
+
+            const localPath = `./${attachment.filename}`;
+            await receiver.saveAttachment(attachmentData, localPath);
+          }
+        }
+
+        // You could add additional processing here
+        // For example, sending notifications that a missed email was recovered
+      },
+      maxResults
+    );
+
+    res.status(200).json({
+      message: "Email recovery process completed",
+      result
+    });
+  } catch (err) {
+    console.error("❌ Email recovery failed:", err);
+    res.status(500).send(`Failed to recover missed emails: ${err.message}`);
+  }
+});
+
 
 // Twilio: Send SMS API
 app.post("/send-sms", async (req, res) => {

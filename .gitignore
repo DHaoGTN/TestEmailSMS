@@ -1,5 +1,8 @@
-.env
-test-email-hao-gmail-pubsub.json
 .vscode
 node_modules
 dist
+data
+
+.env
+test-email-hao-gmail-pubsub.json
+lastHistoryId.json

@@ -1,6 +1,8 @@
 // gmailReceiver.js
 const { google } = require("googleapis");
 const { PubSub } = require("@google-cloud/pubsub");
+const fs = require("fs").promises;
+const path = require("path");
 require("dotenv").config();
 
 class GmailReceiver {
@@ -15,6 +17,9 @@ class GmailReceiver {
 
     // Add a Set to track processed message IDs
     this.processedMessageIds = new Set();
+
+    // Path to store the latest historyId
+    this.historyIdFilePath = path.join(__dirname, 'lastHistoryId.json');
 
     // Optionally, clear processed IDs periodically to prevent memory growth
     this.startProcessedIdCleanup();
@@ -54,6 +59,9 @@ class GmailReceiver {
       );
       console.log("  ➤ Initial historyId:", res.data.historyId);
 
+      // Save the initial historyId for future recovery
+      await this.saveHistoryId(res.data.historyId);
+
       return res.data;
     } catch (error) {
       console.error(
@@ -61,6 +69,31 @@ class GmailReceiver {
         error.response ? error.response.data : error.message
       );
       throw error;
+    }
+  }
+
+  // Save the latest historyId to a file
+  async saveHistoryId(historyId) {
+    try {
+      await fs.writeFile(
+        this.historyIdFilePath,
+        JSON.stringify({ historyId, timestamp: Date.now() })
+      );
+      console.log(`✅ Saved historyId: ${historyId}`);
+    } catch (error) {
+      console.error('❌ Failed to save historyId:', error);
+    }
+  }
+
+  // Load the last saved historyId
+  async getLastHistoryId() {
+    try {
+      const data = await fs.readFile(this.historyIdFilePath, 'utf8');
+      const { historyId } = JSON.parse(data);
+      return historyId;
+    } catch (error) {
+      console.error('❌ Failed to load historyId:', error);
+      return null;
     }
   }
 
@@ -80,6 +113,9 @@ class GmailReceiver {
         console.log("📨 Gmail push notification");
         console.log("  ➤ Email Address:", notification.emailAddress);
         console.log("  ➤ History ID:", notification.historyId);
+
+        // Save the latest historyId for recovery purposes
+        await this.saveHistoryId(notification.historyId);
 
         // Fetch recent messages
         const listResponse = await this.gmail.users.messages.list({
@@ -286,6 +322,97 @@ class GmailReceiver {
       console.log("  ➤ Subject:", subject);
       console.log("  ➤ Date:", date);
       console.log("  ➤ Body:\n", decodedBody);
+    }
+  }
+
+  async recoverMissedEmails(onEmailCallback, maxResults = 10) {
+    try {
+      console.log("🔄 Starting email recovery process...");
+
+      // Get the last saved historyId
+      const lastHistoryId = await this.getLastHistoryId();
+
+      if (!lastHistoryId) {
+        console.log("⚠️ No previous historyId found. Cannot recover emails.");
+        return { success: false, error: "No previous historyId found" };
+      }
+
+      console.log(`🔍 Recovering emails since historyId: ${lastHistoryId}`);
+
+      // Get history since last known historyId
+      const historyResponse = await this.gmail.users.history.list({
+        userId: "me",
+        startHistoryId: lastHistoryId,
+        historyTypes: ["messageAdded"],
+        maxResults: maxResults
+      });
+
+      console.log("✅ History retrieved successfully");
+
+      if (!historyResponse.data.history || historyResponse.data.history.length === 0) {
+        console.log("ℹ️ No new email history found since last check");
+        return { success: true, emailsProcessed: 0 };
+      }
+
+      // Extract all message IDs from history
+      const messageIds = new Set();
+      historyResponse.data.history.forEach(history => {
+        if (history.messagesAdded) {
+          history.messagesAdded.forEach(msg => {
+            if (msg.message && msg.message.id) {
+              messageIds.add(msg.message.id);
+            }
+          });
+        }
+      });
+
+      console.log(`🧪 Found ${messageIds.size} potentially missed emails`);
+
+      // Process each missed email
+      let processedCount = 0;
+      for (const msgId of messageIds) {
+        // Skip if already processed
+        if (this.processedMessageIds.has(msgId)) {
+          console.log(`🚫 Skipping already processed message: ${msgId}`);
+          continue;
+        }
+
+        try {
+          console.log(`📥 Fetching missed email: ${msgId}`);
+          const msgData = await this.gmail.users.messages.get({
+            userId: "me",
+            id: msgId,
+            format: "full"
+          });
+
+          // Add to processed set
+          this.processedMessageIds.add(msgId);
+
+          // Process the email
+          this.processEmailMessage(msgId, msgData, onEmailCallback);
+          processedCount++;
+        } catch (error) {
+          console.error(`❌ Error processing missed email ${msgId}:`, error.message);
+        }
+      }
+
+      // Save the latest historyId for next time
+      if (historyResponse.data.historyId) {
+        await this.saveHistoryId(historyResponse.data.historyId);
+      }
+
+      console.log(`✅ Recovery complete. Processed ${processedCount} missed emails.`);
+      return { 
+        success: true, 
+        emailsProcessed: processedCount,
+        totalFound: messageIds.size
+      };
+    } catch (error) {
+      console.error("❌ Error recovering missed emails:", error);
+      return { 
+        success: false, 
+        error: error.message
+      };
     }
   }
 }
