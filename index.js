@@ -97,6 +97,9 @@ app.get("/latest", async (req, res) => {
   }
 });
 
+/**
+ * Recover missed emails 24 hours ago
+ */
 app.get("/recover-emails", async (req, res) => {
   try {
     // Optional query parameter for maximum number of emails to recover
@@ -107,6 +110,7 @@ app.get("/recover-emails", async (req, res) => {
         console.log("📩 Recovered missed email!");
         console.log("  ➤ From:", emailData.from);
         console.log("  ➤ Subject:", emailData.subject);
+        console.log("  ➤ Body:", emailData.plainTextContent);
         console.log("  ➤ Date:", emailData.date);
         console.log("  ➤ Message ID:", emailData.msgId);
 
@@ -118,7 +122,7 @@ app.get("/recover-emails", async (req, res) => {
               attachment.id
             );
 
-            const localPath = `./${attachment.filename}`;
+            const localPath = `./data/${attachment.filename}`;
             await receiver.saveAttachment(attachmentData, localPath);
           }
         }
