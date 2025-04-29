@@ -102,8 +102,9 @@ app.get("/latest", async (req, res) => {
  */
 app.get("/recover-emails", async (req, res) => {
   try {
-    // Optional query parameter for maximum number of emails to recover
-    const maxResults = req.query.max ? parseInt(req.query.max) : 20;
+    // Optional query parameter
+    const maxResults = req.query.max ? parseInt(req.query.max) : 20; // default 20 emails
+    const hoursAgo = req.query.last ? parseInt(req.query.last) : 24; // default last 24 hours
 
     const result = await receiver.recoverMissedEmails(
       async (emailData, rawData) => {
@@ -130,7 +131,8 @@ app.get("/recover-emails", async (req, res) => {
         // You could add additional processing here
         // For example, sending notifications that a missed email was recovered
       },
-      maxResults
+      maxResults,
+      hoursAgo
     );
 
     res.status(200).json({

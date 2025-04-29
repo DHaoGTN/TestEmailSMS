@@ -328,7 +328,7 @@ class GmailReceiver {
   async recoverMissedEmails(onEmailCallback, maxResults = 10, hoursAgo = 24) {
     try {
       console.log(
-        `🔄 Starting email recovery process for the last ${hoursAgo} hours...`
+        `🔄 Starting getting ${maxResults} emails from last ${hoursAgo} hours...`
       );
 
       // Calculate the time range
