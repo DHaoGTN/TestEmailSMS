@@ -15,21 +15,66 @@ class GmailReceiver {
     this.gmail = google.gmail("v1");
     this.auth = null;
 
-    // Add a Set to track processed message IDs
-    this.processedMessageIds = new Set();
-
     // Path to store the latest historyId
     this.historyIdFilePath = path.join(__dirname, "lastHistoryId.json");
+    this.processedIdsFilePath = path.join(
+      __dirname,
+      "processedMessageIds.json"
+    );
 
-    // Optionally, clear processed IDs periodically to prevent memory growth
+    // Initialize processed IDs from file
+    this.initializeProcessedIds();
+
+    // Optionally, clear processed IDs periodically to prevent file growth
     this.startProcessedIdCleanup();
+  }
+
+  async initializeProcessedIds() {
+    try {
+      const data = await fs.readFile(this.processedIdsFilePath, "utf8");
+      const ids = JSON.parse(data);
+      if (!Array.isArray(ids)) throw new Error("Invalid processed IDs format");
+    } catch (error) {
+      // If file doesn't exist or is invalid, create empty array
+      await this.saveProcessedIds([]);
+    }
+  }
+
+  async getProcessedIds() {
+    try {
+      const data = await fs.readFile(this.processedIdsFilePath, "utf8");
+      return JSON.parse(data);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async saveProcessedIds(ids) {
+    await fs.writeFile(this.processedIdsFilePath, JSON.stringify(ids));
+  }
+
+  async addProcessedId(id) {
+    const ids = await this.getProcessedIds();
+    if (!ids.includes(id)) {
+      ids.push(id);
+      await this.saveProcessedIds(ids);
+    }
+  }
+
+  async hasProcessedId(id) {
+    const ids = await this.getProcessedIds();
+    return ids.includes(id);
+  }
+
+  async clearProcessedIds() {
+    await this.saveProcessedIds([]);
+    console.log("🧹 Processed message IDs file cleared");
   }
 
   startProcessedIdCleanup() {
     setInterval(() => {
       // Clear processed IDs every 24 hours
-      this.processedMessageIds.clear();
-      console.log("🧹 Processed message IDs cache cleared");
+      this.clearProcessedIds();
     }, 24 * 60 * 60 * 1000);
   }
 
@@ -130,7 +175,7 @@ class GmailReceiver {
         // Process recent messages
         for (const msg of messages) {
           // Check if message has already been processed
-          if (this.processedMessageIds.has(msg.id)) {
+          if (await this.hasProcessedId(msg.id)) {
             console.log(`🚫 Skipping already processed message: ${msg.id}`);
             continue;
           }
@@ -143,7 +188,7 @@ class GmailReceiver {
             });
 
             // Add message ID to processed set
-            this.processedMessageIds.add(msg.id);
+            await this.addProcessedId(msg.id);
 
             // Process and callback with email details
             this.processEmailMessage(msg.id, msgData, onEmailCallback);
@@ -156,10 +201,7 @@ class GmailReceiver {
         }
 
         // Log processed message IDs for debugging
-        console.log(
-          "🔍 Processed Message IDs:",
-          Array.from(this.processedMessageIds)
-        );
+        console.log("🔍 Processed Message IDs:", await this.getProcessedIds());
       } catch (error) {
         console.error("❌ Error processing Pub/Sub message:", error);
       }
@@ -361,7 +403,7 @@ class GmailReceiver {
       let processedCount = 0;
       for (const message of listResponse.data.messages) {
         // Skip if already processed
-        if (this.processedMessageIds.has(message.id)) {
+        if (await this.hasProcessedId(message.id)) {
           console.log(`🚫 Skipping already processed message: ${message.id}`);
           continue;
         }
@@ -375,7 +417,7 @@ class GmailReceiver {
           });
 
           // Add to processed set
-          this.processedMessageIds.add(message.id);
+          await this.addProcessedId(message.id);
 
           // Process the email
           this.processEmailMessage(message.id, msgData, onEmailCallback);

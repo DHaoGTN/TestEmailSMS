@@ -6,3 +6,4 @@ data
 .env
 test-email-hao-gmail-pubsub.json
 lastHistoryId.json
+processedMessageIds.json
