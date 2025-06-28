@@ -41,4 +41,6 @@ After clicking Authorize, you’ll be redirected and an authorization code will 
     + Role: Pub/Sub Publisher
   + Make sure created subscription is type Pull
 
-2.3. Create Service account (for listener) with role: Pub/Sub Subscriber, then download JSON key and put to project.
+2.3. On Topic: Add principal: gmail-api-push@system.gserviceaccount.com with role Pub/Sub Publisher.
+
+2.4. Create Service account (for listener) with role: Pub/Sub Subscriber, then download JSON key and put to project.
